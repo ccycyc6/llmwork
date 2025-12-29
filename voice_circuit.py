@@ -6,8 +6,8 @@ import json
 import sys
 
 # ================= 配置区域 =================
-DEEPSEEK_API_KEY = "sk-18da037f0d4e44388c36806465c0a11b" # ⚠️ 填入你的 Key
-OUTPUT_FILENAME = "voice_circuit_v12.circ"
+DEEPSEEK_API_KEY = "sk-18da037f0d4e44388c36806465c0a11b" # ⚠️ 你的 Key
+OUTPUT_FILENAME = "voice_circuit_v15_big.circ"
 # ===========================================
 
 def get_xml_template(components_xml):
@@ -64,8 +64,8 @@ def get_xml_template(components_xml):
 
 def get_user_input():
     print("\n" + "="*50)
-    print("   🧠 Logisim 时序逻辑觉醒版 v12.0")
-    print("   (支持 D触发器、计数器、状态机)")
+    print("   🐘 Logisim 大号门生成器 v15.0")
+    print("   (Logic Gates Size = 70)")
     print("="*50)
     print("1. ⌨️  文本输入")
     print("2. 🎤 语音输入")
@@ -89,7 +89,6 @@ def query_deepseek(prompt):
     url = "https://api.deepseek.com/chat/completions"
     headers = {"Content-Type": "application/json", "Authorization": f"Bearer {DEEPSEEK_API_KEY}"}
     
-    # 核心升级：System Prompt 教会 AI 什么是“时序电路”
     system_prompt = """
     You are a Digital Logic Architect.
     Task: Convert description into a JSON list of components.
@@ -158,8 +157,6 @@ def generate_circuit_file(json_str):
             
             name = item['type']
             
-            # === 组件生成逻辑 ===
-            
             # 1. Pin (引脚)
             if name == "Pin":
                 net_name = item.get('net', 'unknown')
@@ -171,41 +168,42 @@ def generate_circuit_file(json_str):
                     xml_body += generate_comp(0, "Pin", x, y, f'<a name="appearance" val="classic"/><a name="facing" val="west"/><a name="output" val="true"/><a name="label" val="{net_name}"/>')
                     xml_body += generate_comp(0, "Tunnel", x, y, f'<a name="facing" val="east"/><a name="label" val="{net_name}"/>')
 
-            # 2. Gates (逻辑门) - lib=1
+            # 2. Gates (逻辑门) - 大号版 (Size 70)
             elif "Gate" in name:
                 inputs = item.get("inputs", [])
                 num_inputs = len(inputs)
                 
-                # A. 几何修正 (保持 v13 逻辑)
+                # 默认属性字符串
+                gate_attrs = ""
                 input_x_offset = -50
+                
                 if name == "NOT Gate": 
+                    # NOT 门通常保持小巧，或者设为30/50。这里保持 -30 偏移量。
                     input_x_offset = -30
                     num_inputs = 1
-                elif name in ["NAND Gate", "NOR Gate", "XOR Gate", "XNOR Gate"]: 
-                    input_x_offset = -60
-                
-                # B. 设置 inputs 属性 (告诉 Logisim 这是几个输入的门)
-                # 默认是2，如果是 NOT 门不需要设置
-                gate_attrs = ""
-                if name != "NOT Gate" and num_inputs > 2:
-                    gate_attrs = f'<a name="inputs" val="{num_inputs}"/>'
+                else:
+                    # === 核心修改：尺寸设为 70 (Wide/Big) ===
+                    gate_attrs += '<a name="size" val="70"/>'
+                    input_x_offset = -70 # 基础宽度变成 70
+                    
+                    # 几何修正：带圈/带盾的门要再加 10px
+                    if name in ["NAND Gate", "NOR Gate", "XOR Gate", "XNOR Gate"]: 
+                        input_x_offset = -80
+                    
+                    # 设置输入数量属性
+                    if num_inputs > 2:
+                        gate_attrs += f'<a name="inputs" val="{num_inputs}"/>'
                 
                 xml_body += generate_comp(1, name, x, y, gate_attrs)
                 
-                # C. 输入隧道排列 (核心修正！)
+                # 输入隧道排列 (v14 版修正)
                 for idx, net in enumerate(inputs):
                     if name == "NOT Gate":
                         y_offset = 0
-                    
-                    # 🔴 关键修正：2输入门的特殊处理
-                    # Logisim 的2输入宽门，引脚跨度是 40 (-20, +20)
-                    # 而不是公式算出来的 20 (-10, +10)
+                    # 2输入门：使用宽间距 (-20, +20)
                     elif num_inputs == 2:
                         y_offset = -20 if idx == 0 else 20
-                        
-                    # 多输入 (3+) 使用通用公式 (间距 20)
-                    # 3输入: -20, 0, +20
-                    # 4输入: -30, -10, +10, +30
+                    # 多输入门：使用标准间距
                     else:
                         y_offset = (idx * 20) - ((num_inputs - 1) * 10)
                     
@@ -216,16 +214,12 @@ def generate_circuit_file(json_str):
                 if out_net:
                     xml_body += generate_comp(0, "Tunnel", x, y, f'<a name="label" val="{out_net}"/>')
 
-            # 3. Memory (触发器) - lib=4  <-- 新增逻辑！
+            # 3. Memory (触发器) - 恢复 v13 稳定布局
             elif "Flip-Flop" in name:
                 xml_body += generate_comp(4, name, x, y, '<a name="appearance" val="logisim_evolution"/>')
-                
                 inputs = item.get("inputs", [])
-                # inputs 顺序通常为: [D, CLK, RST]
                 
-                # --- 输入隧道生成 (分散布局) ---
-                
-                # 1. D (数据): 放在左上方 (y-10)
+                # D (数据)
                 if len(inputs) > 0:
                     xml_body += generate_comp(0, "Tunnel", x - 10, y + 10, f'<a name="facing" val="east"/><a name="label" val="{inputs[0]}"/>')
                 
@@ -247,8 +241,8 @@ def generate_circuit_file(json_str):
         full_content = get_xml_template(xml_body)
         with open(OUTPUT_FILENAME, "w") as f:
             f.write(full_content)
-        print(f"\n🎉 v12.0 时序逻辑版已生成！")
-        print(f"👉 检查是否包含了 D Flip-Flop，以及 D/CLK/RST 连接。")
+        print(f"\n🎉 v15.0 生成完毕！")
+        print(f"📐 逻辑门已升级为大号 (Size=70)，输入端偏移已自动修正为 -70/-80。")
         print(f"📁 文件: {OUTPUT_FILENAME}")
         
     except Exception as e:

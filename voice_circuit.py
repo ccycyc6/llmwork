@@ -7,7 +7,7 @@ import sys
 
 # ================= 配置区域 =================
 DEEPSEEK_API_KEY = "sk-18da037f0d4e44388c36806465c0a11b" # ⚠️ 填入你的 Key
-OUTPUT_FILENAME = "voice_circuit_v10.circ"
+OUTPUT_FILENAME = "voice_circuit_v12.circ"
 # ===========================================
 
 def get_xml_template(components_xml):
@@ -45,8 +45,11 @@ def get_xml_template(components_xml):
     <tool lib="1" name="NOT Gate"/>
     <tool lib="1" name="AND Gate"/>
     <tool lib="1" name="OR Gate"/>
+    <tool lib="1" name="XOR Gate"/>
     <tool lib="1" name="NAND Gate"/>
     <tool lib="1" name="NOR Gate"/>
+    <sep/>
+    <tool lib="4" name="D Flip-Flop"/>
   </toolbar>
   <circuit name="main">
     <a name="appearance" val="logisim_evolution"/>
@@ -61,14 +64,14 @@ def get_xml_template(components_xml):
 
 def get_user_input():
     print("\n" + "="*50)
-    print("   💎 Logisim 最终完美版 v10.0")
-    print("   (精准区分 OR / NOR 的几何差异)")
+    print("   🧠 Logisim 时序逻辑觉醒版 v12.0")
+    print("   (支持 D触发器、计数器、状态机)")
     print("="*50)
     print("1. ⌨️  文本输入")
     print("2. 🎤 语音输入")
     c = input("选择: ").strip()
     if c == '2': return listen_command()
-    return input("\n📝 请输入电路描述 (试一下: Multiplexer 2 to 1): ")
+    return input("\n📝 请输入电路描述 (试一下: Counter up to 7): ")
 
 def listen_command():
     r = sr.Recognizer()
@@ -86,26 +89,36 @@ def query_deepseek(prompt):
     url = "https://api.deepseek.com/chat/completions"
     headers = {"Content-Type": "application/json", "Authorization": f"Bearer {DEEPSEEK_API_KEY}"}
     
+    # 核心升级：System Prompt 教会 AI 什么是“时序电路”
     system_prompt = """
-    You are a Circuit Topological Architect.
-    Task: Convert description into a JSON list of components categorized by 'stage'.
+    You are a Digital Logic Architect.
+    Task: Convert description into a JSON list of components.
     
-    Rules:
-    1. 'stage': 0 (Inputs), 1 (Logic Layer 1), 2 (Logic Layer 2), 3 (Outputs).
-    2. 'inputs': List of net names.
-    3. 'output': Result net name.
+    Key Concepts:
+    1. Combinational Logic (Gates): lib=1.
+    2. Sequential Logic (Memory): lib=4. Use "D Flip-Flop".
+    3. Stages: 0 (Inputs), 1-2 (Next State Logic), 3 (Flip-Flops), 4 (Outputs).
     
-    Example for Mux 2-1:
+    IMPORTANT for Counters:
+    - You MUST include a "D Flip-Flop" for each bit.
+    - Flip-Flop Inputs: ["D_i", "CLK", "RST"]
+    - Flip-Flop Output: "Q_i"
+    - The Logic calculates D_i based on current Q_i.
+    
+    JSON Example (2-bit Counter):
     {
       "items": [
-        {"type": "Pin", "stage": 0, "net": "A", "dir": "out"}, 
-        {"type": "Pin", "stage": 0, "net": "B", "dir": "out"},
-        {"type": "Pin", "stage": 0, "net": "S", "dir": "out"},
-        {"type": "NOT Gate", "stage": 1, "inputs": ["S"], "output": "nS"},
-        {"type": "AND Gate", "stage": 1, "inputs": ["A", "nS"], "output": "top"},
-        {"type": "AND Gate", "stage": 1, "inputs": ["B", "S"], "output": "bot"},
-        {"type": "OR Gate", "stage": 2, "inputs": ["top", "bot"], "output": "Y"},
-        {"type": "Pin", "stage": 3, "net": "Y", "dir": "in"}
+        {"type": "Pin", "stage": 0, "net": "CLK", "dir": "out"},
+        {"type": "Pin", "stage": 0, "net": "RST", "dir": "out"},
+        
+        {"type": "XOR Gate", "stage": 1, "inputs": ["Q0", "EN"], "output": "D0"},
+        {"type": "XOR Gate", "stage": 1, "inputs": ["Q1", "D0"], "output": "D1"},
+        
+        {"type": "D Flip-Flop", "stage": 3, "inputs": ["D0", "CLK", "RST"], "output": "Q0"},
+        {"type": "D Flip-Flop", "stage": 3, "inputs": ["D1", "CLK", "RST"], "output": "Q1"},
+        
+        {"type": "Pin", "stage": 4, "net": "Q0", "dir": "in"},
+        {"type": "Pin", "stage": 4, "net": "Q1", "dir": "in"}
       ]
     }
     """
@@ -145,6 +158,9 @@ def generate_circuit_file(json_str):
             
             name = item['type']
             
+            # === 组件生成逻辑 ===
+            
+            # 1. Pin (引脚)
             if name == "Pin":
                 net_name = item.get('net', 'unknown')
                 is_input_pin = (item.get('dir') == 'out')
@@ -155,36 +171,84 @@ def generate_circuit_file(json_str):
                     xml_body += generate_comp(0, "Pin", x, y, f'<a name="appearance" val="classic"/><a name="facing" val="west"/><a name="output" val="true"/><a name="label" val="{net_name}"/>')
                     xml_body += generate_comp(0, "Tunnel", x, y, f'<a name="facing" val="east"/><a name="label" val="{net_name}"/>')
 
+            # 2. Gates (逻辑门) - lib=1
             elif "Gate" in name:
-                xml_body += generate_comp(1, name, x, y, "")
-                
                 inputs = item.get("inputs", [])
+                num_inputs = len(inputs)
                 
-                # === v10.0 精确修正逻辑 ===
-                # 默认偏移 (AND, OR, XOR)
-                input_x_offset = -50 
-                
-                if name == "NOT Gate":
+                # A. 几何修正 (保持 v13 逻辑)
+                input_x_offset = -50
+                if name == "NOT Gate": 
                     input_x_offset = -30
-                # 检测“带圈”的门 (NAND, NOR, XNOR) -> 它们的身体更长，需要退更多
-                elif name in ["NAND Gate", "NOR Gate", "XNOR Gate"]:
+                    num_inputs = 1
+                elif name in ["NAND Gate", "NOR Gate", "XOR Gate", "XNOR Gate"]: 
                     input_x_offset = -60
-                # 普通门 (AND, OR, XOR) 保持 -50
                 
+                # B. 设置 inputs 属性 (告诉 Logisim 这是几个输入的门)
+                # 默认是2，如果是 NOT 门不需要设置
+                gate_attrs = ""
+                if name != "NOT Gate" and num_inputs > 2:
+                    gate_attrs = f'<a name="inputs" val="{num_inputs}"/>'
+                
+                xml_body += generate_comp(1, name, x, y, gate_attrs)
+                
+                # C. 输入隧道排列 (核心修正！)
                 for idx, net in enumerate(inputs):
-                    y_offset = -20 if idx == 0 else 20
-                    if len(inputs) == 1: y_offset = 0
+                    if name == "NOT Gate":
+                        y_offset = 0
+                    
+                    # 🔴 关键修正：2输入门的特殊处理
+                    # Logisim 的2输入宽门，引脚跨度是 40 (-20, +20)
+                    # 而不是公式算出来的 20 (-10, +10)
+                    elif num_inputs == 2:
+                        y_offset = -20 if idx == 0 else 20
+                        
+                    # 多输入 (3+) 使用通用公式 (间距 20)
+                    # 3输入: -20, 0, +20
+                    # 4输入: -30, -10, +10, +30
+                    else:
+                        y_offset = (idx * 20) - ((num_inputs - 1) * 10)
                     
                     xml_body += generate_comp(0, "Tunnel", x + input_x_offset, y + y_offset, f'<a name="facing" val="east"/><a name="label" val="{net}"/>')
-
+                
+                # 输出隧道
                 out_net = item.get("output")
                 if out_net:
                     xml_body += generate_comp(0, "Tunnel", x, y, f'<a name="label" val="{out_net}"/>')
 
+            # 3. Memory (触发器) - lib=4  <-- 新增逻辑！
+            elif "Flip-Flop" in name:
+                xml_body += generate_comp(4, name, x, y, '<a name="appearance" val="logisim_evolution"/>')
+                
+                inputs = item.get("inputs", [])
+                # inputs 顺序通常为: [D, CLK, RST]
+                
+                # --- 输入隧道生成 (分散布局) ---
+                
+                # 1. D (数据): 放在左上方 (y-10)
+                if len(inputs) > 0:
+                    xml_body += generate_comp(0, "Tunnel", x - 10, y + 10, f'<a name="facing" val="east"/><a name="label" val="{inputs[0]}"/>')
+                
+                # 2. CLK (时钟): 放在左下方 (y+20)，拉开30px距离
+                if len(inputs) > 1:
+                    xml_body += generate_comp(0, "Tunnel", x - 10, y + 50, f'<a name="facing" val="east"/><a name="label" val="{inputs[1]}"/>')
+                    
+                # 3. RST (复位): 放在更下方 (y+50)
+                if len(inputs) > 2:
+                    xml_body += generate_comp(0, "Tunnel", x + 20, y     , f'<a name="facing" val="south"/><a name="label" val="{inputs[2]}"/>')
+                
+                
+                # Q (输出): 放在右侧 (x+60)，而不是重叠在 (x,y)
+                out_net = item.get("output")
+                if out_net:
+
+                    xml_body += generate_comp(0, "Tunnel", x + 50, y + 10, f'<a name="label" val="{out_net}"/>')
+
         full_content = get_xml_template(xml_body)
         with open(OUTPUT_FILENAME, "w") as f:
             f.write(full_content)
-        print(f"\n🎉 v10.0 已生成！\n逻辑修正：OR Gate = -50, NOR Gate = -60。")
+        print(f"\n🎉 v12.0 时序逻辑版已生成！")
+        print(f"👉 检查是否包含了 D Flip-Flop，以及 D/CLK/RST 连接。")
         print(f"📁 文件: {OUTPUT_FILENAME}")
         
     except Exception as e:

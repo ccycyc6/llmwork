@@ -7,16 +7,21 @@ import sys
 
 # ================= 配置区域 =================
 DEEPSEEK_API_KEY = "sk-18da037f0d4e44388c36806465c0a11b" # ⚠️ 你的 Key
-OUTPUT_FILENAME = "voice_circuit_v15_big.circ"
+OUTPUT_FILENAME = "voice_circuit_v24_perfect.circ"
 # ===========================================
 
 def get_xml_template(components_xml):
     return f"""<?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <project source="3.8.0" version="1.0">
   This file is intended to be loaded by Logisim-evolution v3.8.0(https://github.com/logisim-evolution/).
+
   <lib desc="#Wiring" name="0">
-    <tool name="Pin"><a name="appearance" val="classic"/></tool>
-    <tool name="Tunnel"><a name="facing" val="east"/></tool>
+    <tool name="Pin">
+      <a name="appearance" val="classic"/>
+    </tool>
+    <tool name="Tunnel">
+      <a name="facing" val="east"/>
+    </tool>
   </lib>
   <lib desc="#Gates" name="1"/>
   <lib desc="#Plexers" name="2"/>
@@ -49,6 +54,8 @@ def get_xml_template(components_xml):
     <tool lib="1" name="NAND Gate"/>
     <tool lib="1" name="NOR Gate"/>
     <sep/>
+    <tool lib="2" name="Multiplexer"/>
+    <sep/>
     <tool lib="4" name="D Flip-Flop"/>
   </toolbar>
   <circuit name="main">
@@ -64,26 +71,39 @@ def get_xml_template(components_xml):
 
 def get_user_input():
     print("\n" + "="*50)
-    print("   🐘 Logisim 大号门生成器 v15.0")
-    print("   (Logic Gates Size = 70)")
+    print("   👂 Logisim 从容对话版 v24.0")
+    print("   (修复：二输入门引脚完美对齐)")
     print("="*50)
     print("1. ⌨️  文本输入")
-    print("2. 🎤 语音输入")
+    print("2. 🎤 语音输入 (中文)")
     c = input("选择: ").strip()
     if c == '2': return listen_command()
-    return input("\n📝 请输入电路描述 (试一下: Counter up to 7): ")
+    return input("\n📝 请输入电路描述 (试一下: 做一个四位计数器): ")
 
 def listen_command():
     r = sr.Recognizer()
+    r.pause_threshold = 2.5 
+    r.non_speaking_duration = 1.0 
+    
     with sr.Microphone() as source:
-        print("\n🎤 正在听...")
-        r.adjust_for_ambient_noise(source, duration=0.5)
+        print("\n🎤 正在调整环境噪音... (请稍等)")
+        r.adjust_for_ambient_noise(source, duration=0.8)
+        print("🎤 请用中文说话 (你有充足的时间思考，说完后保持安静 2-3 秒)...")
         try:
-            audio = r.listen(source, timeout=5)
-            text = r.recognize_google(audio)
-            print(f"✅ 收到: {text}")
+            audio = r.listen(source, timeout=8, phrase_time_limit=15)
+            print("⏳ 正在识别...")
+            text = r.recognize_google(audio, language="zh-CN")
+            print(f"✅ 识别结果: {text}")
             return text
-        except: return None
+        except sr.UnknownValueError:
+            print("❌ 没听清，请再说一遍")
+            return None
+        except sr.WaitTimeoutError:
+            print("❌ 超时了，你好像没说话")
+            return None
+        except Exception as e:
+            print(f"❌ 错误: {e}")
+            return None
 
 def query_deepseek(prompt):
     url = "https://api.deepseek.com/chat/completions"
@@ -157,7 +177,7 @@ def generate_circuit_file(json_str):
             
             name = item['type']
             
-            # 1. Pin (引脚)
+            # 1. Pin
             if name == "Pin":
                 net_name = item.get('net', 'unknown')
                 is_input_pin = (item.get('dir') == 'out')
@@ -168,81 +188,69 @@ def generate_circuit_file(json_str):
                     xml_body += generate_comp(0, "Pin", x, y, f'<a name="appearance" val="classic"/><a name="facing" val="west"/><a name="output" val="true"/><a name="label" val="{net_name}"/>')
                     xml_body += generate_comp(0, "Tunnel", x, y, f'<a name="facing" val="east"/><a name="label" val="{net_name}"/>')
 
-            # 2. Gates (逻辑门) - 大号版 (Size 70)
+            # 2. Gates
             elif "Gate" in name:
                 inputs = item.get("inputs", [])
                 num_inputs = len(inputs)
                 
-                # 默认属性字符串
                 gate_attrs = ""
                 input_x_offset = -50
                 
                 if name == "NOT Gate": 
-                    # NOT 门通常保持小巧，或者设为30/50。这里保持 -30 偏移量。
                     input_x_offset = -30
                     num_inputs = 1
                 else:
-                    # === 核心修改：尺寸设为 70 (Wide/Big) ===
+                    # Size 70 宽门
                     gate_attrs += '<a name="size" val="70"/>'
-                    input_x_offset = -70 # 基础宽度变成 70
+                    input_x_offset = -70
                     
-                    # 几何修正：带圈/带盾的门要再加 10px
+                    # 几何修正
                     if name in ["NAND Gate", "NOR Gate", "XOR Gate", "XNOR Gate"]: 
                         input_x_offset = -80
                     
-                    # 设置输入数量属性
                     if num_inputs > 2:
                         gate_attrs += f'<a name="inputs" val="{num_inputs}"/>'
                 
                 xml_body += generate_comp(1, name, x, y, gate_attrs)
                 
-                # 输入隧道排列 (v14 版修正)
+                # 输入隧道排列
                 for idx, net in enumerate(inputs):
                     if name == "NOT Gate":
                         y_offset = 0
-                    # 2输入门：使用宽间距 (-20, +20)
+                    
+                    # === ⚡️ 核心修复区域 ⚡️ ===
+                    # 对于 Size=70 的门，2输入其实是 -20 和 +20
+                    # 之前设置的 -30/+30 会导致引脚悬空
                     elif num_inputs == 2:
-                        y_offset = -20 if idx == 0 else 20
-                    # 多输入门：使用标准间距
+                        y_offset = -20 if idx == 0 else 20 
+                    
+                    # 多输入门
                     else:
                         y_offset = (idx * 20) - ((num_inputs - 1) * 10)
                     
                     xml_body += generate_comp(0, "Tunnel", x + input_x_offset, y + y_offset, f'<a name="facing" val="east"/><a name="label" val="{net}"/>')
                 
-                # 输出隧道
-                out_net = item.get("output")
-                if out_net:
-                    xml_body += generate_comp(0, "Tunnel", x, y, f'<a name="label" val="{out_net}"/>')
+                if item.get("output"):
+                    xml_body += generate_comp(0, "Tunnel", x, y, f'<a name="label" val="{item["output"]}"/>')
 
-            # 3. Memory (触发器) - 恢复 v13 稳定布局
+            # 3. Flip-Flop
             elif "Flip-Flop" in name:
                 xml_body += generate_comp(4, name, x, y, '<a name="appearance" val="logisim_evolution"/>')
                 inputs = item.get("inputs", [])
                 
-                # D (数据)
-                if len(inputs) > 0:
-                    xml_body += generate_comp(0, "Tunnel", x - 10, y + 10, f'<a name="facing" val="east"/><a name="label" val="{inputs[0]}"/>')
+                if len(inputs) > 0: xml_body += generate_comp(0, "Tunnel", x - 10, y + 10, f'<a name="facing" val="east"/><a name="label" val="{inputs[0]}"/>')
+                if len(inputs) > 1: xml_body += generate_comp(0, "Tunnel", x - 10, y + 50, f'<a name="facing" val="east"/><a name="label" val="{inputs[1]}"/>')
+                if len(inputs) > 2: xml_body += generate_comp(0, "Tunnel", x + 20, y + 60, f'<a name="facing" val="north"/><a name="label" val="{inputs[2]}"/>')
                 
-                # 2. CLK (时钟): 放在左下方 (y+20)，拉开30px距离
-                if len(inputs) > 1:
-                    xml_body += generate_comp(0, "Tunnel", x - 10, y + 50, f'<a name="facing" val="east"/><a name="label" val="{inputs[1]}"/>')
-                    
-                # 3. RST (复位): 放在更下方 (y+50)
-                if len(inputs) > 2:
-                    xml_body += generate_comp(0, "Tunnel", x + 20, y     , f'<a name="facing" val="south"/><a name="label" val="{inputs[2]}"/>')
-                
-                
-                # Q (输出): 放在右侧 (x+60)，而不是重叠在 (x,y)
                 out_net = item.get("output")
                 if out_net:
-
                     xml_body += generate_comp(0, "Tunnel", x + 50, y + 10, f'<a name="label" val="{out_net}"/>')
 
         full_content = get_xml_template(xml_body)
         with open(OUTPUT_FILENAME, "w") as f:
             f.write(full_content)
-        print(f"\n🎉 v15.0 生成完毕！")
-        print(f"📐 逻辑门已升级为大号 (Size=70)，输入端偏移已自动修正为 -70/-80。")
+        print(f"\n🎉 v24.0 生成完毕！")
+        print(f"🔧 修复：2输入门引脚偏移已恢复为标准的 -20 和 +20，现在应该能完美对齐了。")
         print(f"📁 文件: {OUTPUT_FILENAME}")
         
     except Exception as e:

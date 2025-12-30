@@ -8,8 +8,12 @@ import sys
 # ================= 配置区域 =================
 DEEPSEEK_API_KEY = "sk-18da037f0d4e44388c36806465c0a11b" # ⚠️ 你的 Key
 OUTPUT_FILENAME = "voice_circuit_v24_perfect.circ"
+OUTPUT_VERILOG_FILENAME = "voice_circuit_output.v" # 新增：Verilog 输出文件名
 # ===========================================
 
+# ==========================================
+# 核心逻辑区 (保持 v24.0 原样不动)
+# ==========================================
 def get_xml_template(components_xml):
     return f"""<?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <project source="3.8.0" version="1.0">
@@ -68,96 +72,6 @@ def get_xml_template(components_xml):
   </circuit>
 </project>
 """
-
-def get_user_input():
-    print("\n" + "="*50)
-    print("   👂 Logisim 从容对话版 v24.0")
-    print("   (修复：二输入门引脚完美对齐)")
-    print("="*50)
-    print("1. ⌨️  文本输入")
-    print("2. 🎤 语音输入 (中文)")
-    c = input("选择: ").strip()
-    if c == '2': return listen_command()
-    return input("\n📝 请输入电路描述 (试一下: 做一个四位计数器): ")
-
-def listen_command():
-    r = sr.Recognizer()
-    r.pause_threshold = 2.5 
-    r.non_speaking_duration = 1.0 
-    
-    with sr.Microphone() as source:
-        print("\n🎤 正在调整环境噪音... (请稍等)")
-        r.adjust_for_ambient_noise(source, duration=0.8)
-        print("🎤 请用中文说话 (你有充足的时间思考，说完后保持安静 2-3 秒)...")
-        try:
-            audio = r.listen(source, timeout=8, phrase_time_limit=15)
-            print("⏳ 正在识别...")
-            text = r.recognize_google(audio, language="zh-CN")
-            print(f"✅ 识别结果: {text}")
-            return text
-        except sr.UnknownValueError:
-            print("❌ 没听清，请再说一遍")
-            return None
-        except sr.WaitTimeoutError:
-            print("❌ 超时了，你好像没说话")
-            return None
-        except Exception as e:
-            print(f"❌ 错误: {e}")
-            return None
-
-def query_deepseek(prompt):
-    url = "https://api.deepseek.com/chat/completions"
-    headers = {"Content-Type": "application/json", "Authorization": f"Bearer {DEEPSEEK_API_KEY}"}
-    
-    system_prompt = """
-    You are a Digital Logic Architect.
-    Task: Convert description into a JSON list of components.
-    
-    Key Concepts:
-    1. Combinational Logic (Gates): lib=1.
-    2. Sequential Logic (Memory): lib=4. Use "D Flip-Flop".
-    3. Stages: 0 (Inputs), 1-2 (Next State Logic), 3 (Flip-Flops), 4 (Outputs).
-    
-    IMPORTANT for Counters:
-    - You MUST include a "D Flip-Flop" for each bit.
-    - Flip-Flop Inputs: ["D_i", "CLK", "RST"]
-    - Flip-Flop Output: "Q_i"
-    - The Logic calculates D_i based on current Q_i.
-    
-    JSON Example (2-bit Counter):
-    {
-      "items": [
-        {"type": "Pin", "stage": 0, "net": "CLK", "dir": "out"},
-        {"type": "Pin", "stage": 0, "net": "RST", "dir": "out"},
-        
-        {"type": "XOR Gate", "stage": 1, "inputs": ["Q0", "EN"], "output": "D0"},
-        {"type": "XOR Gate", "stage": 1, "inputs": ["Q1", "D0"], "output": "D1"},
-        
-        {"type": "D Flip-Flop", "stage": 3, "inputs": ["D0", "CLK", "RST"], "output": "Q0"},
-        {"type": "D Flip-Flop", "stage": 3, "inputs": ["D1", "CLK", "RST"], "output": "Q1"},
-        
-        {"type": "Pin", "stage": 4, "net": "Q0", "dir": "in"},
-        {"type": "Pin", "stage": 4, "net": "Q1", "dir": "in"}
-      ]
-    }
-    """
-
-    data = {
-        "model": "deepseek-chat",
-        "messages": [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": f"Design: {prompt}"}
-        ],
-        "stream": False,
-        "response_format": {"type": "json_object"}
-    }
-    
-    try:
-        r = requests.post(url, headers=headers, json=data)
-        return r.json()['choices'][0]['message']['content']
-    except Exception as e:
-        print(f"API Error: {e}")
-        return None
 
 def generate_comp(lib, name, x, y, attrs=""):
     return f'    <comp lib="{lib}" loc="({x},{y})" name="{name}">{attrs}</comp>\n'
@@ -257,9 +171,162 @@ def generate_circuit_file(json_str):
         print(f"❌ 错误: {e}")
         print(json_str)
 
+# ==========================================
+# 新增功能区：Verilog 保存逻辑
+# ==========================================
+def save_verilog_file(json_str):
+    try:
+        data = json.loads(json_str)
+        # 尝试从 JSON 中提取代码，如果 AI 直接返回代码则直接用
+        code = data.get("verilog_code", "")
+        
+        if not code:
+            print("❌ 生成失败：AI 未返回有效的 Verilog 代码")
+            return
+
+        with open(OUTPUT_VERILOG_FILENAME, "w", encoding="utf-8") as f:
+            f.write(code)
+        
+        print(f"\n📄 Verilog 代码已保存！")
+        print(f"📁 文件: {OUTPUT_VERILOG_FILENAME}")
+        print("-" * 40)
+        print(code)
+        print("-" * 40)
+        
+    except Exception as e:
+        print(f"❌ 保存 Verilog 错误: {e}")
+        print("原始数据:", json_str)
+
+# ==========================================
+# 修改后的交互与 API 逻辑
+# ==========================================
+
+def get_user_input_method():
+    print("\n" + "="*50)
+    print("   1. ⌨️  文本输入")
+    print("   2. 🎤 语音输入 (中文)")
+    c = input("   选择输入方式: ").strip()
+    if c == '2': return listen_command()
+    return input("\n📝 请输入电路描述 (例如: 做一个四位计数器): ")
+
+def listen_command():
+    r = sr.Recognizer()
+    r.pause_threshold = 2.5 
+    r.non_speaking_duration = 1.0 
+    
+    with sr.Microphone() as source:
+        print("\n🎤 正在调整环境噪音... (请稍等)")
+        r.adjust_for_ambient_noise(source, duration=0.8)
+        print("🎤 请用中文说话 (你有充足的时间思考，说完后保持安静 2-3 秒)...")
+        try:
+            audio = r.listen(source, timeout=8, phrase_time_limit=15)
+            print("⏳ 正在识别...")
+            text = r.recognize_google(audio, language="zh-CN")
+            print(f"✅ 识别结果: {text}")
+            return text
+        except sr.UnknownValueError:
+            print("❌ 没听清，请再说一遍")
+            return None
+        except sr.WaitTimeoutError:
+            print("❌ 超时了，你好像没说话")
+            return None
+        except Exception as e:
+            print(f"❌ 错误: {e}")
+            return None
+
+def query_deepseek(prompt, mode="circuit"):
+    url = "https://api.deepseek.com/chat/completions"
+    headers = {"Content-Type": "application/json", "Authorization": f"Bearer {DEEPSEEK_API_KEY}"}
+    
+    # 📌 模式 1: Logisim 专用 Prompt (保留原有逻辑)
+    system_prompt_circuit = """
+    You are a Digital Logic Architect.
+    Task: Convert description into a JSON list of components.
+    
+    Key Concepts:
+    1. Combinational Logic (Gates): lib=1.
+    2. Sequential Logic (Memory): lib=4. Use "D Flip-Flop".
+    3. Stages: 0 (Inputs), 1-2 (Next State Logic), 3 (Flip-Flops), 4 (Outputs).
+    
+    IMPORTANT for Counters:
+    - You MUST include a "D Flip-Flop" for each bit.
+    - Flip-Flop Inputs: ["D_i", "CLK", "RST"]
+    - Flip-Flop Output: "Q_i"
+    - The Logic calculates D_i based on current Q_i.
+    
+    JSON Example (2-bit Counter):
+    {
+      "items": [
+        {"type": "Pin", "stage": 0, "net": "CLK", "dir": "out"},
+        {"type": "Pin", "stage": 0, "net": "RST", "dir": "out"},
+        {"type": "XOR Gate", "stage": 1, "inputs": ["Q0", "EN"], "output": "D0"},
+        {"type": "D Flip-Flop", "stage": 3, "inputs": ["D0", "CLK", "RST"], "output": "Q0"},
+        {"type": "Pin", "stage": 4, "net": "Q0", "dir": "in"}
+      ]
+    }
+    """
+
+    # 📌 模式 2: Verilog 专用 Prompt
+    system_prompt_verilog = """
+    You are an FPGA Engineer.
+    Task: Convert the user's description into a synthesizable Verilog module.
+    
+    Rules:
+    1. Use IEEE 1364 standard (Verilog-2001).
+    2. Output ONLY a JSON object containing the code string.
+    
+    JSON Output Structure:
+    {
+      "verilog_code": "module name (...); ... endmodule"
+    }
+    """
+
+    # 根据模式选择提示词
+    current_prompt = system_prompt_circuit if mode == "circuit" else system_prompt_verilog
+
+    data = {
+        "model": "deepseek-chat",
+        "messages": [
+            {"role": "system", "content": current_prompt},
+            {"role": "user", "content": f"Design: {prompt}"}
+        ],
+        "stream": False,
+        "response_format": {"type": "json_object"}
+    }
+    
+    try:
+        print(f"🤖 正在生成 ({'Logisim电路' if mode=='circuit' else 'Verilog代码'}) ...")
+        r = requests.post(url, headers=headers, json=data)
+        return r.json()['choices'][0]['message']['content']
+    except Exception as e:
+        print(f"API Error: {e}")
+        return None
+
 if __name__ == "__main__":
-    cmd = get_user_input()
+    print("\n" + "="*50)
+    print("   🔀 双模生成器 (Logisim v24.0 Core)")
+    print("="*50)
+    print("请选择要生成的目标:")
+    print("1. 📐 Logisim 电路图 (.circ)")
+    print("2. 💻 Verilog 代码 (.v)")
+    
+    mode_input = input("   你的选择 (1/2): ").strip()
+    
+    # 确定模式
+    target_mode = "circuit"
+    if mode_input == '2':
+        target_mode = "verilog"
+    
+    # 获取用户描述
+    cmd = get_user_input_method()
+    
     if cmd:
-        print(f"🤖 设计中: '{cmd}' ...")
-        res = query_deepseek(cmd)
-        if res: generate_circuit_file(res)
+        # 调用 API
+        res = query_deepseek(cmd, mode=target_mode)
+        
+        if res:
+            # 根据模式分发处理
+            if target_mode == "circuit":
+                generate_circuit_file(res)
+            else:
+                save_verilog_file(res)

@@ -1,0 +1,19 @@
+verilated_fst_c.o: \
+ /home/ccy/Documents/oss-cad-suite-linux-x64-20250904/oss-cad-suite/share/verilator/include/verilated_fst_c.cpp \
+ /home/ccy/Documents/oss-cad-suite-linux-x64-20250904/oss-cad-suite/share/verilator/include/verilated.h \
+ /home/ccy/Documents/oss-cad-suite-linux-x64-20250904/oss-cad-suite/share/verilator/include/verilated_config.h \
+ /home/ccy/Documents/oss-cad-suite-linux-x64-20250904/oss-cad-suite/share/verilator/include/verilatedos.h \
+ /home/ccy/Documents/oss-cad-suite-linux-x64-20250904/oss-cad-suite/share/verilator/include/verilated_types.h \
+ /home/ccy/Documents/oss-cad-suite-linux-x64-20250904/oss-cad-suite/share/verilator/include/verilated_funcs.h \
+ /home/ccy/Documents/oss-cad-suite-linux-x64-20250904/oss-cad-suite/share/verilator/include/verilated_fst_c.h \
+ /home/ccy/Documents/oss-cad-suite-linux-x64-20250904/oss-cad-suite/share/verilator/include/verilated_trace.h \
+ /home/ccy/Documents/oss-cad-suite-linux-x64-20250904/oss-cad-suite/share/verilator/include/gtkwave/fastlz.c \
+ /home/ccy/Documents/oss-cad-suite-linux-x64-20250904/oss-cad-suite/share/verilator/include/gtkwave/fastlz.h \
+ /home/ccy/Documents/oss-cad-suite-linux-x64-20250904/oss-cad-suite/share/verilator/include/gtkwave/fastlz.c \
+ /home/ccy/Documents/oss-cad-suite-linux-x64-20250904/oss-cad-suite/share/verilator/include/gtkwave/fstapi.c \
+ /home/ccy/Documents/oss-cad-suite-linux-x64-20250904/oss-cad-suite/share/verilator/include/gtkwave/fstapi.h \
+ /home/ccy/Documents/oss-cad-suite-linux-x64-20250904/oss-cad-suite/share/verilator/include/gtkwave/lz4.h \
+ /home/ccy/Documents/oss-cad-suite-linux-x64-20250904/oss-cad-suite/share/verilator/include/gtkwave/lz4.c \
+ /home/ccy/Documents/oss-cad-suite-linux-x64-20250904/oss-cad-suite/share/verilator/include/verilated_trace_imp.h \
+ /home/ccy/Documents/oss-cad-suite-linux-x64-20250904/oss-cad-suite/share/verilator/include/verilated_intrinsics.h \
+ /home/ccy/Documents/oss-cad-suite-linux-x64-20250904/oss-cad-suite/share/verilator/include/verilated_threads.h

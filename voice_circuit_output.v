@@ -1,8 +1,16 @@
-module logic_circuit (
-    input A,
-    input B,
-    input C,
-    output Y
+module counter_8bit (
+    input wire clk,
+    input wire rst_n,
+    input wire en,
+    output reg [7:0] count
 );
-    assign Y = (A & B) | (~C);
+
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            count <= 8'b0;
+        end else if (en) begin
+            count <= count + 1'b1;
+        end
+    end
+
 endmodule

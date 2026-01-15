@@ -11,7 +11,7 @@ import re
 
 DEEPSEEK_API_KEY = "sk-18da037f0d4e44388c36806465c0a11b" 
 OUTPUT_FILENAME = "voice_circuit_v24_perfect.circ"
-OUTPUT_VERILOG_FILENAME = "voice_circuit_output.v"
+OUTPUT_VERILOG_FILENAME = "666.v"
 OUTPUT_CPP_FILENAME = "sim_main.cpp" 
 
 
@@ -171,9 +171,6 @@ def generate_circuit_file(json_str):
         print(f"❌ 错误: {e}")
         print(json_str)
 
-# ==========================================
-# 🚀 新增功能区：Verilator 自动化仿真逻辑
-# ==========================================
 
 def extract_module_name(verilog_code):
     """从 Verilog 代码中提取模块名"""
@@ -412,7 +409,7 @@ def query_deepseek(prompt, mode="circuit", extra_context=""):
 
 if __name__ == "__main__":
     print("\n" + "="*50)
-    print("   🔀 双模生成器 (Logisim v24.0 Core) + 自动仿真")
+    print("   Logisim v24.0 Core + 自动仿真")
     print("="*50)
     print("请选择要生成的目标:")
     print("1. 📐 Logisim 电路图 (.circ)")

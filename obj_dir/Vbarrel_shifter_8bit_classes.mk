@@ -2,7 +2,7 @@
 # DESCRIPTION: Verilator output: Make include file with class lists
 #
 # This file lists generated Verilated files, for including in higher level makefiles.
-# See Vcounter_8bit.mk for the caller.
+# See Vbarrel_shifter_8bit.mk for the caller.
 
 ### Switches...
 # C11 constructs required?  0/1 (always on now)
@@ -25,24 +25,26 @@ VM_TRACE_VCD = 0
 ### Object file lists...
 # Generated module classes, fast-path, compile with highest optimization
 VM_CLASSES_FAST += \
-  Vcounter_8bit \
-  Vcounter_8bit___024root__DepSet_h66f0d6ba__0 \
-  Vcounter_8bit___024root__DepSet_h7af57662__0 \
+  Vbarrel_shifter_8bit \
+  Vbarrel_shifter_8bit___024root__DepSet_h16cb8d13__0 \
+  Vbarrel_shifter_8bit___024root__DepSet_h53aa247b__0 \
 
 # Generated module classes, non-fast-path, compile with low/medium optimization
 VM_CLASSES_SLOW += \
-  Vcounter_8bit___024root__Slow \
-  Vcounter_8bit___024root__DepSet_h7af57662__0__Slow \
+  Vbarrel_shifter_8bit__ConstPool_0 \
+  Vbarrel_shifter_8bit___024root__Slow \
+  Vbarrel_shifter_8bit___024root__DepSet_h16cb8d13__0__Slow \
+  Vbarrel_shifter_8bit___024root__DepSet_h53aa247b__0__Slow \
 
 # Generated support classes, fast-path, compile with highest optimization
 VM_SUPPORT_FAST += \
-  Vcounter_8bit__Trace__0 \
+  Vbarrel_shifter_8bit__Trace__0 \
 
 # Generated support classes, non-fast-path, compile with low/medium optimization
 VM_SUPPORT_SLOW += \
-  Vcounter_8bit__Syms \
-  Vcounter_8bit__Trace__0__Slow \
-  Vcounter_8bit__TraceDecls__0__Slow \
+  Vbarrel_shifter_8bit__Syms \
+  Vbarrel_shifter_8bit__Trace__0__Slow \
+  Vbarrel_shifter_8bit__TraceDecls__0__Slow \
 
 # Global classes, need linked once per executable, fast-path, compile with highest optimization
 VM_GLOBAL_FAST += \

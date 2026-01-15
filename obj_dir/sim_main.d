@@ -1,4 +1,4 @@
-sim_main.o: ../sim_main.cpp Vcounter_8bit.h \
+sim_main.o: ../sim_main.cpp Vbarrel_shifter_8bit.h \
  /home/ccy/Documents/oss-cad-suite-linux-x64-20250904/oss-cad-suite/share/verilator/include/verilated.h \
  /home/ccy/Documents/oss-cad-suite-linux-x64-20250904/oss-cad-suite/share/verilator/include/verilated_config.h \
  /home/ccy/Documents/oss-cad-suite-linux-x64-20250904/oss-cad-suite/share/verilator/include/verilatedos.h \

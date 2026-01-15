@@ -1,16 +1,16 @@
 // Verilated -*- C++ -*-
 // DESCRIPTION: Verilator output: Symbol table implementation internals
 
-#include "Vcounter_8bit__pch.h"
-#include "Vcounter_8bit.h"
-#include "Vcounter_8bit___024root.h"
+#include "Vbarrel_shifter_8bit__pch.h"
+#include "Vbarrel_shifter_8bit.h"
+#include "Vbarrel_shifter_8bit___024root.h"
 
 // FUNCTIONS
-Vcounter_8bit__Syms::~Vcounter_8bit__Syms()
+Vbarrel_shifter_8bit__Syms::~Vbarrel_shifter_8bit__Syms()
 {
 }
 
-Vcounter_8bit__Syms::Vcounter_8bit__Syms(VerilatedContext* contextp, const char* namep, Vcounter_8bit* modelp)
+Vbarrel_shifter_8bit__Syms::Vbarrel_shifter_8bit__Syms(VerilatedContext* contextp, const char* namep, Vbarrel_shifter_8bit* modelp)
     : VerilatedSyms{contextp}
     // Setup internal state of the Syms class
     , __Vm_modelp{modelp}
@@ -18,7 +18,7 @@ Vcounter_8bit__Syms::Vcounter_8bit__Syms(VerilatedContext* contextp, const char*
     , TOP{this, namep}
 {
         // Check resources
-        Verilated::stackCheck(11);
+        Verilated::stackCheck(33);
     // Configure time unit / time precision
     _vm_contextp__->timeunit(-12);
     _vm_contextp__->timeprecision(-12);

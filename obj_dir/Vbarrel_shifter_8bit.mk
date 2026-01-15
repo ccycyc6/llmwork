@@ -2,7 +2,7 @@
 # DESCRIPTION: Verilator output: Makefile for building Verilated archive or executable
 #
 # Execute this makefile from the object directory:
-#    make -f Vcounter_8bit.mk
+#    make -f Vbarrel_shifter_8bit.mk
 
 default: sim_main
 
@@ -32,9 +32,9 @@ VM_SC_TARGET_ARCH = linux
 
 ### Vars...
 # Design prefix (from --prefix)
-VM_PREFIX = Vcounter_8bit
+VM_PREFIX = Vbarrel_shifter_8bit
 # Module prefix (from --prefix)
-VM_MODPREFIX = Vcounter_8bit
+VM_MODPREFIX = Vbarrel_shifter_8bit
 # User CFLAGS (from -CFLAGS on Verilator command line)
 VM_USER_CFLAGS = \
 
@@ -52,7 +52,7 @@ VM_USER_DIR = \
 
 ### Default rules...
 # Include list of all generated classes
-include Vcounter_8bit_classes.mk
+include Vbarrel_shifter_8bit_classes.mk
 # Include global rules
 include $(VERILATOR_ROOT)/include/verilated.mk
 

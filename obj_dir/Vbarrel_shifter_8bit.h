@@ -5,20 +5,20 @@
 // The class here is then constructed to instantiate the design.
 // See the Verilator manual for examples.
 
-#ifndef VERILATED_VCOUNTER_8BIT_H_
-#define VERILATED_VCOUNTER_8BIT_H_  // guard
+#ifndef VERILATED_VBARREL_SHIFTER_8BIT_H_
+#define VERILATED_VBARREL_SHIFTER_8BIT_H_  // guard
 
 #include "verilated.h"
 
-class Vcounter_8bit__Syms;
-class Vcounter_8bit___024root;
+class Vbarrel_shifter_8bit__Syms;
+class Vbarrel_shifter_8bit___024root;
 class VerilatedFstC;
 
 // This class is the main interface to the Verilated model
-class alignas(VL_CACHE_LINE_BYTES) Vcounter_8bit VL_NOT_FINAL : public VerilatedModel {
+class alignas(VL_CACHE_LINE_BYTES) Vbarrel_shifter_8bit VL_NOT_FINAL : public VerilatedModel {
   private:
     // Symbol table holding complete model state (owned by this class)
-    Vcounter_8bit__Syms* const vlSymsp;
+    Vbarrel_shifter_8bit__Syms* const vlSymsp;
 
   public:
 
@@ -29,10 +29,10 @@ class alignas(VL_CACHE_LINE_BYTES) Vcounter_8bit VL_NOT_FINAL : public Verilated
     // PORTS
     // The application code writes and reads these signals to
     // propagate new values into/out from the Verilated model.
-    VL_IN8(&clk,0,0);
-    VL_IN8(&rst_n,0,0);
-    VL_IN8(&en,0,0);
-    VL_OUT8(&count,7,0);
+    VL_IN8(&data_in,7,0);
+    VL_IN8(&shift_amount,2,0);
+    VL_IN8(&shift_direction,0,0);
+    VL_OUT8(&data_out,7,0);
 
     // CELLS
     // Public to allow access to /* verilator public */ items.
@@ -40,19 +40,19 @@ class alignas(VL_CACHE_LINE_BYTES) Vcounter_8bit VL_NOT_FINAL : public Verilated
 
     // Root instance pointer to allow access to model internals,
     // including inlined /* verilator public_flat_* */ items.
-    Vcounter_8bit___024root* const rootp;
+    Vbarrel_shifter_8bit___024root* const rootp;
 
     // CONSTRUCTORS
     /// Construct the model; called by application code
     /// If contextp is null, then the model will use the default global context
     /// If name is "", then makes a wrapper with a
     /// single model invisible with respect to DPI scope names.
-    explicit Vcounter_8bit(VerilatedContext* contextp, const char* name = "TOP");
-    explicit Vcounter_8bit(const char* name = "TOP");
+    explicit Vbarrel_shifter_8bit(VerilatedContext* contextp, const char* name = "TOP");
+    explicit Vbarrel_shifter_8bit(const char* name = "TOP");
     /// Destroy the model; called (often implicitly) by application code
-    virtual ~Vcounter_8bit();
+    virtual ~Vbarrel_shifter_8bit();
   private:
-    VL_UNCOPYABLE(Vcounter_8bit);  ///< Copying not allowed
+    VL_UNCOPYABLE(Vbarrel_shifter_8bit);  ///< Copying not allowed
 
   public:
     // API METHODS
